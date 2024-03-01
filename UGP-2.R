@@ -1,11 +1,13 @@
 set.seed(100)
 
-## Density function
+## Univariate Density function
 dens <- function(x){return(exp(-x^2)*(2+sin(5*x)+sin(2*x)))}
-
 ## Gradient of Density function
 grad_dens <- function(x){return(-2*x+ (5*cos(5*x)+2*cos(2*x))/(2+sin(5*x)+sin(2*x)))}
 
+## A bi-variate Density Function
+ring2D <- function(x){ exp(-5*(x[1]^2+x[2]^2-1)^2)}
+grad_ring2D <- function(x){return(-20*(x[1]^2+x[2]^2-1)*(x[1]+x[2]))}
 
 ## Metropolis - Hastings Algorithm for given density function
 mh_sampler <- function(dens, start = 1, nreps = 1000, prop_sd = 1)
@@ -33,16 +35,13 @@ ula_sampler <- function(dens, start = 2, nreps = 1000, paramet = 0.7)
   theta <- rep(0,nreps)
   theta[1] <- start
   prop <- rep(0,nreps)
-  # q_y <- rep(0,nreps)
   for (i in 2:nreps)
   {
     theta_star <- rnorm(1, mean = theta[i-1]+paramet*grad_dens(theta[i-1]), sd = sqrt(2*paramet))
-    #  q_y[i-1] <- dnorm(theta_star, mean = theta[i-1]+paramet*grad_dens(theta[i-1]), sd = sqrt(2*paramet))
     prop[i-1] <- theta_star
     theta[i] <- theta_star
   }
   prop[nreps] <- rnorm(1, mean = theta[nreps]+paramet*grad_dens(theta[nreps]), sd = sqrt(2*paramet))
-  # q_y[nreps] <- dnorm(prop[nreps], mean = theta[nreps]+paramet*grad_dens(theta[nreps]), sd = sqrt(2*paramet))
   return(cbind(theta,prop))
 }
 
@@ -84,9 +83,19 @@ estimate <- function(fun,data,weight, paramet = .01)
 }
 
 
-## Some general function
+## Some general univariate function
 fun1 <- function(x){return(x)}
 fun2 <- function(x){return(x^2)}
+
+## Multivariate Function
+
+testfunction1 <- function(x){d = length(x); return(sum(x^3)/d)}
+
+testfunction2 <- function(x){d = length(x); return(sum(x^2)/d)}
+
+testfunction2 <- function(x){d = length(x); return(sum(x)/d)}
+
+testfunction4 <- function(x){d = length(x); return(sum(exp(x))/d)}
 
 
 ##########################************** Implementation ***********************#####################################
@@ -135,5 +144,16 @@ mean(data1[, 1]^2)
 
 
 
+################################# Variance of Estimators ########################################
 
+
+est_mh <- vector(length=10000)
+
+for(i in 1:1000)
+{
+  data_mh <- mh_sampler(dens = dens, start=1, nreps = 1e4)
+  est_mh[i] <- estimate(fun1,data_mh,weight_mh)
+}
+
+variance(est_mh)
 
