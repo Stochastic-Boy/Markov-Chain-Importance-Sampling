@@ -128,9 +128,12 @@ weights = dgamma(Samples,shape = sum(Y)+1, rate = n+1)/(approx(g$x,g$y,xout=Samp
 weights = weights/sum(weights)
 Weights = cumsum(weights)
 
+fun<-function(x)
+{
+  k <- qgamma(c(x+0.025,x+0.975),shape = sum(Y)+1, rate = n+1)
+  return(k[2]-k[1])
+}
 
+x <- optimize(fun,lower=0,upper = 0.025)$minimum
+HPD_exact <- qgamma(c(x+0.025,x+0.975),shape = sum(Y)+1, rate = n+1)
 HPD(0.05,Weights)
-qgamma(c(0.025,0.975),shape = sum(Y)+1, rate = n+1)
-
-
-
