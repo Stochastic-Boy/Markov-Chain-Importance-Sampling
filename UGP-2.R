@@ -1,8 +1,7 @@
 set.seed(100)
 
-## Univariate Density function
+
 dens <- function(x){return(exp(-x^2)*(2+sin(5*x)+sin(2*x)))}
-## Gradient of Density function
 grad_dens <- function(x){return(-2*x+ (5*cos(5*x)+2*cos(2*x))/(2+sin(5*x)+sin(2*x)))}
 
 ## A bi-variate Density Function
@@ -82,6 +81,21 @@ estimate <- function(fun,data,weight, paramet = .01)
   return(sum1/sum2)
 }
 
+estimate2 <- function(fun,data, paramet = .01)
+{
+  sum1 = 0
+  sum2 = 0
+  k = dim(data)[1]
+  g = density(data[,2])
+  y = data[,2]
+  for(i in 1:k)
+  {
+    sum1 = sum1 + (dens(y[i])/approx(g$x,g$y,xout = y[i])$y)*fun(data[i,2])
+    sum2 = sum2 + dens(y[i])/approx(g$x,g$y,xout = y[i])$y
+  }
+  return(sum1/sum2)
+}
+
 
 ## Some general univariate function
 fun1 <- function(x){return(x)}
@@ -117,7 +131,7 @@ for(i in 1:length(dat2))
 lines(y_dum, dat2, col = "blue")
 
 
-paramet = .2
+paramet = 0.2
 ## Generate and plot data from ULA Sampler
 data2 <- ula_sampler(dens = dens, start=1, nreps = 1e4, paramet = paramet)
 lines(density(data2), col = "red")
@@ -133,6 +147,7 @@ lines(y_dum, dat2, col = "blue")
 
 
 estimate(fun1,data1,weight_mh)
+estimate2(fun1,data1)
 mean(data1[, 1])
 estimate(fun2,data1,weight_mh)
 mean(data1[, 1]^2)
@@ -141,19 +156,50 @@ estimate(fun1,data2,weight_ula, paramet = paramet)
 mean(data1[, 1])
 estimate(fun2,data2,weight_ula, paramet = paramet)
 mean(data1[, 1]^2)
-
-
-
 ################################# Variance of Estimators ########################################
 
-
-est_mh <- vector(length=10000)
+est_mh <- vector(length=1000)
 
 for(i in 1:1000)
 {
-  data_mh <- mh_sampler(dens = dens, start=1, nreps = 1e4)
+  data_mh <- mh_sampler(dens = dens, start=1, nreps = 1e3)
   est_mh[i] <- estimate(fun1,data_mh,weight_mh)
 }
 
-variance(est_mh)
+var(est_mh)
+# 0.003161821
+
+est_mh_kde <- vector(length=1000)
+for(i in 1:1000)
+{
+  data_mh <- mh_sampler(dens = dens, start=1, nreps = 1e4)
+  est_mh_kde[i] <- estimate2(fun1,data_mh)
+}
+var(est_mh_kde)
+#   7.337105e-07
+
+mean(est_mh)
+# 0.1868874
+mean(est_mh_kde)
+# 0.1880719
+
+data_mh <- mh_sampler(dens = dens, start=1, nreps = 1e6)
+mean(data_mh)
+# 0.1899867
+
+
+data<- matrix(NA, ncol=2,nrow=7)
+j = 1
+for(i in c(100,500,1000,5000,10000,50000,100000))
+{
+  data_mh <- mh_sampler(dens = dens, start=1, nreps = i)
+  data[j,1] = system.time({out = estimate(fun1,data_mh,weight_mh)})[1]
+  data[j,2] = system.time({out = estimate2(fun1,data_mh)})[1]
+  j = j +1
+}
+
+x = c(100,500,1000,5000,10000,50000,100000)
+par(mfrow = c(1,2))
+plot(x = x, y = data[,1], "l",col = "red",lwd="2",main="Performance of MCIS", xlab = "Number of Samples",ylab = "System time")
+plot(x = x, y = data[,2], "l",col = "blue",lwd="2",main="Performace of KDE estimate", xlab = "Number of Samples",ylab = "System time")
 

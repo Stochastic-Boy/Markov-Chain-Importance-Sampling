@@ -1,3 +1,5 @@
+library(mvtnorm)
+
 # Function to generate samples using Unadjusted Langevin Algorithm for Gaussian target
 ula_gaussian <- function(n_samples, epsilon, mean, variance, start) 
 {
@@ -25,34 +27,21 @@ ula_gamma <- function(n_samples, epsilon, shape, rate)
 }
 
 
-search <- function(Weights, a)
-{
-  i = 1
-  j = length(Weights)
-  mid = 0
-  while(j>i+1)
-  {
-    mid = as.integer((i+j)/2)
-    if(Weights[mid]>a){j=mid}
-    else{i = mid}
-  }
-  return(mid)
-}
 
-HPD <- function(alpha, Weights)
+HPD <- function(alpha, Weights, Samples)
 {
   m = length(Weights)
   vec <- c(NA,NA)
   curr = 10000000
-  j1 = (seq(0,as.integer(alpha*m),by = 1))/m
-  j2 = j1 + (1-alpha)
+  j1 = (seq(1,floor((alpha)*m),by = 1))/m
+  j2 = j1 + ((1-alpha))
   for(i in 1:length(j1))
   {
-    theta1 <- Samples[search(Weights, j1[i])]
-    theta2 <- Samples[search(Weights, j2[i])]
-    if(curr> (theta2-theta1))
+    theta <- c(Samples[which(Weights>j1[i])[1]],Samples[which(Weights>=j2[i])[1]])
+    if(curr > (theta[2]-theta[1]))
     {
-      vec = c(theta1,theta2)
+      vec = theta
+      curr = (theta[2]-theta[1])
     }
   }
   return(vec)
@@ -84,8 +73,9 @@ plot(density(samples_gamma))
 # underlying distribution when population variance known.
 
 # prior mu ~ N(0,100)
-mu = 7.5
-sd = 1.8
+set.seed(4452)
+mu = 0
+sd = 1
 n = 50
 Y <- rnorm(n, mean = mu, sd = sd)
 posterior_mean <- (sum(Y)/sd^2)/((n/sd^2) + (1/100))
@@ -102,9 +92,32 @@ weights = weights/sum(weights)
 Weights = cumsum(weights)
 
 
-HPD(0.05,Weights)
-qnorm(c(0.25,0.975),mean = posterior_mean,sd = sqrt(posterior_var))
+HPD(0.05,Weights, Samples)
+qnorm(c(0.025,0.975),mean = posterior_mean,sd = sqrt(posterior_var))
 
+alpha <- c(0.25,0.5,0.75)
+MSE <- rep(0,3)
+qu <- qnorm(c(0.25,0.5,0.75),mean = posterior_mean,sd = sqrt(posterior_var))
+for(i in 1:1000)
+{
+  Samples <- ula_gaussian(m,epsilon = 0.0001,posterior_mean,posterior_var,start = 0.000001)
+  Samples <- sort(Samples)
+  g <- density(Samples)
+  weights <- vector(length = m)
+  weights = dnorm(Samples,mean = posterior_mean,sd = sqrt(posterior_var))/(approx(g$x,g$y,xout=Samples)$y)
+  weights = weights/sum(weights)
+  Weights = cumsum(weights)
+  q1 <- Samples[which(Weights>alpha[1])]
+  q2 <- Samples[which(Weights>alpha[2])]
+  q3 <- Samples[which(Weights>alpha[3])]
+  MSE[1] <- MSE[1] + (q1-qu[1])^2
+  MSE[2] <- MSE[2] + (q2-qu[2])^2
+  MSE[3] <- MSE[2] + (q3-qu[3])^2
+}
+
+MSE <- MSE/1000
+MSE
+## >>> 2.361802e-07 3.490802e-08 3.491659e-08
 #########################################################################################
 #########################################################################################
 
@@ -136,4 +149,30 @@ fun<-function(x)
 
 x <- optimize(fun,lower=0,upper = 0.025)$minimum
 HPD_exact <- qgamma(c(x+0.025,x+0.975),shape = sum(Y)+1, rate = n+1)
-HPD(0.05,Weights)
+HPD(0.05,Weights,Samples)
+
+
+alpha <- c(0.25,0.5,0.75)
+MSE <- rep(0,3)
+qu <- qgamma(c(0.25,0.5,0.75),shape = sum(Y)+1, rate = n+1)
+for(i in 1:10000)
+{
+  Samples <- ula_gamma(m,epsilon = 0.001,shape = sum(Y)+1, rate = (n+1))
+  Samples <- sort(Samples)
+  g <- density(Samples)
+  weights <- vector(length = m)
+  weights = dgamma(Samples,shape = sum(Y)+1, rate = n+1)/(approx(g$x,g$y,xout=Samples)$y)
+  weights = weights/sum(weights)
+  Weights = cumsum(weights)
+  q1 <- Samples[which(Weights>alpha[1])]
+  q2 <- Samples[which(Weights>alpha[2])]
+  q3 <- Samples[which(Weights>alpha[3])]
+  MSE[1] <- MSE[1] + (q1-qu[1])^2
+  MSE[2] <- MSE[2] + (q2-qu[2])^2
+  MSE[3] <- MSE[3] + (q3-qu[3])^2
+}
+
+MSE <- MSE/10000
+MSE
+
+## >>> 3.686399e-06 6.695139e-07 4.705776e-06
