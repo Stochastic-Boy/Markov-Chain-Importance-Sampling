@@ -118,6 +118,25 @@ for(i in 1:1000)
 MSE <- MSE/1000
 MSE
 ## >>> 2.361802e-07 3.490802e-08 3.491659e-08
+
+MSE <- rep(0,3)
+m = 100000
+qu <- qnorm(c(0.25,0.5,0.75),mean = posterior_mean,sd = sqrt(posterior_var))
+for(i in 1:10000)
+{
+  Samples <- ula_gaussian(m,epsilon = 0.0001,posterior_mean,posterior_var,start = 0.000001)
+  Samples <- sort(Samples)
+  q1 <- Samples[alpha[1]*m]
+  q2 <- Samples[alpha[2]*m]
+  q3 <- Samples[alpha[3]*m]
+  MSE[1] <- MSE[1] + (q1-qu[1])^2
+  MSE[2] <- MSE[2] + (q2-qu[2])^2
+  MSE[3] <- MSE[3] + (q3-qu[3])^2
+}
+
+MSE <- MSE/10000
+MSE
+## >>> 9.630869e-05 8.786842e-05 9.504091e-05
 #########################################################################################
 #########################################################################################
 
@@ -176,3 +195,23 @@ MSE <- MSE/10000
 MSE
 
 ## >>> 3.686399e-06 6.695139e-07 4.705776e-06
+
+
+MSE <- rep(0,3)
+m = 100000
+qu <- qgamma(c(0.25,0.5,0.75),shape = sum(Y)+1, rate = n+1)
+for(i in 1:10000)
+{
+  Samples <- ula_gamma(m, epsilon = 0.001,shape = sum(Y)+1, rate = (n+1))
+  Samples <- sort(Samples)
+  q1 <- Samples[alpha[1]*m]
+  q2 <- Samples[alpha[2]*m]
+  q3 <- Samples[alpha[3]*m]
+  MSE[1] <- MSE[1] + (q1-qu[1])^2
+  MSE[2] <- MSE[2] + (q2-qu[2])^2
+  MSE[3] <- MSE[3] + (q3-qu[3])^2
+}
+
+MSE <- MSE/10000
+MSE
+## >>> 0.001605519 0.001539897 0.001783654
